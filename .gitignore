@@ -1,0 +1,6 @@
+venv
+data
+pycache
+*.log
+*.sqlite3   
+*.docx
