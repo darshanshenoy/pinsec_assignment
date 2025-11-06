@@ -11,6 +11,9 @@ the minute bars and reports the resulting trade log and PnL.
 from __future__ import annotations
 
 import argparse
+import csv
+import datetime as dt
+import os
 from typing import Iterable, Optional
 
 from data_loader import MarketDataLoader
@@ -26,6 +29,7 @@ def run_backtest(
     strategy_name: str,
     underlying_symbol: str = "NIFTY",
     debug: bool = False,
+    max_daily_loss: Optional[float] = None,
 ) -> None:
     """Run a backtest for a single day of data using the chosen strategy."""
     # Load instrument definitions and the historical price data into memory.
@@ -74,7 +78,13 @@ def run_backtest(
         raise ValueError(f"No market data available for underlying {underlying_symbol}")
     # Instantiate the simulator with initial cash and tie it to the timeline of
     # the chosen instrument.
-    sim = Simulator(loader, starting_cash=1_000_000.0, slippage=0.0, debug=debug)
+    sim = Simulator(
+        loader,
+        starting_cash=1_000_000.0,
+        slippage=0.0,
+        max_daily_loss=max_daily_loss,
+        debug=debug,
+    )
     time_index = loader.data_by_token[index_token].index
     sim.set_time_index(time_index)
     # Dispatch to the concrete strategy requested on the command line.
@@ -104,6 +114,38 @@ def run_backtest(
             f"Entry: {trade.entry_price:.2f}, Exit: {trade.exit_price:.2f}, PnL: {trade.pnl:.2f}"
         )
     print(f"\nTotal realised PnL: {total_pnl:.2f}")
+    print(f"Peak margin used: {sim.peak_margin():.2f}")
+    _write_trade_report(sim.trade_log, total_pnl, sim.peak_margin())
+
+
+def _write_trade_report(trades, total_pnl: float, peak_margin: float, output_dir: str = "logs") -> None:
+    """Persist trade-by-trade results for recruiter review."""
+    if not trades:
+        return
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"trade_log_{dt.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    path = os.path.join(output_dir, filename)
+    with open(path, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(
+            ["Instrument", "Side", "Entry Time", "Exit Time", "Entry Price", "Exit Price", "Quantity", "PnL"]
+        )
+        for trade in trades:
+            writer.writerow(
+                [
+                    trade.instrument,
+                    trade.side,
+                    trade.entry_time.strftime("%H:%M"),
+                    trade.exit_time.strftime("%H:%M"),
+                    f"{trade.entry_price:.2f}",
+                    f"{trade.exit_price:.2f}",
+                    trade.quantity,
+                    f"{trade.pnl:.2f}",
+                ]
+            )
+        writer.writerow(["TOTAL", "", "", "", "", "", "", f"{total_pnl:.2f}"])
+        writer.writerow(["Peak Margin Used", "", "", "", "", "", "", f"{peak_margin:.2f}"])
+    print(f"Detailed trade report saved to {path}")
 
 
 def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
@@ -119,6 +161,8 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Enable verbose logging")
     # Override which underlying symbol to trade (defaults to NIFTY).
     parser.add_argument("--underlying", default="NIFTY", help="Underlying symbol for straddle strategy")
+    # Stop the session after this much realised+unrealised loss (absolute currency).
+    parser.add_argument("--max-daily-loss", type=float, default=None, help="Halt trading once this loss is breached")
     return parser.parse_args(argv)
 
 
@@ -131,6 +175,7 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         strategy_name=args.strategy,
         underlying_symbol=args.underlying,
         debug=args.debug,
+        max_daily_loss=args.max_daily_loss,
     )
 
 

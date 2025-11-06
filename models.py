@@ -61,6 +61,8 @@ class Position:
     exit_time: Optional[dt.datetime] = None
     # Tracks realised profit or loss from partial exits.
     realised_pnl: float = 0.0
+    # Margin reserved for this position (updated by the simulator).
+    margin_required: float = 0.0
 
     def is_open(self) -> bool:
         # A position is still active while we have not recorded an exit time.

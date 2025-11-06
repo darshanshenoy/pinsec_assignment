@@ -12,6 +12,7 @@ and what happens when you run a backtest.
 - `indicators.py` – Helper functions for EMA, RSI, Bollinger Bands, and strike rounding.
 - `strategies/` – Package containing `BaseStrategy`, the short-straddle strategy, and the mean-reversion strategy.
 - `data/` – Sample inputs supplied with the assignment (contracts CSV and one-day market data pickle).
+- `logs/` – Created automatically after a run to store trade-by-trade CSV reports.
 
 ## Installing Dependencies
 
@@ -37,12 +38,17 @@ python -m backtest \
   --contract-file data/Contract_File.csv \
   --market-data-file data/One_Day_Data_For_Simulaion.pkl \
   --strategy straddle \
+  --max-daily-loss 100000 \
   --debug
 ```
 
 - `--strategy` accepts `straddle` or `mean_reversion`.
 - `--debug` is optional; when supplied it prints detailed logs.
 - `--underlying` defaults to `NIFTY`, but you can pass another symbol if your contract file has it.
+- `--max-daily-loss` (optional) stops trading once the realised + unrealised loss exceeds the specified amount.
+- After each run a CSV report is saved under `logs/` containing every trade plus the day’s peak margin usage.
+
+> **Margin model:** the simulator reserves margin equal to 15% of trade notional (`abs(price) * quantity`). Adjust the `margin_rate` parameter in `Simulator` if your interviewer specifies a different haircut.
 
 ## End-to-End Flow
 
@@ -60,8 +66,10 @@ python -m backtest \
    Iterates through each minute. For every bar, the simulator checks risk limits and then calls `strategy.on_bar(...)`.
 7. **Order handling (`Simulator.place_order`)**  
    Fills market orders at the latest price, updates cash, positions, and logs.
-8. **Completion (`strategy.on_finish` and reporting)**  
-   Ensures all trades are closed, then prints a trade log and the total realised PnL.
+8. **Risk & margin tracking (`Simulator`)**  
+   Updates notional-based margin usage on every fill and enforces the optional max-loss guardrail.
+9. **Completion (`strategy.on_finish` and reporting)**  
+   Ensures all trades are closed, prints a trade summary, and writes the CSV report mentioned above.
 
 ## Strategy Flows
 

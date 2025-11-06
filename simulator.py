@@ -2,7 +2,7 @@
 assignment.simulator
 ====================
 
-This module implements a simple event‑driven trading simulator.  It
+This module implements a simple event-driven trading simulator.  It
 mimics key behaviours of a broker/exchange API: retrieving market data,
 placing orders, tracking positions and calculating PnL.  The simulator
 uses data loaded by :class:`assignment.data_loader.MarketDataLoader` and
@@ -23,7 +23,7 @@ __all__ = ["Simulator"]
 
 
 class Simulator:
-    """Event‑driven simulator for trading strategies."""
+    """Event-driven simulator for trading strategies."""
 
     def __init__(
         self,
@@ -32,6 +32,7 @@ class Simulator:
         slippage: float = 0.0,
         max_daily_loss: float = None,
         debug: bool = False,
+        margin_rate: float = 0.15,
     ) -> None:
         # Store direct references to the data loader and pre-loaded data so we
         # do not have to hit disk again once the simulator starts.
@@ -44,6 +45,7 @@ class Simulator:
         self.max_daily_loss = max_daily_loss
         self.debug = debug
         self.order_id_counter = 1
+        self.margin_rate = margin_rate
         # Orders, positions and trade log are simple python containers that
         # grow as the backtest progresses.
         self.orders: List[Order] = []
@@ -52,6 +54,9 @@ class Simulator:
         # These keep track of where we are in the day while iterating bars.
         self.time_index: Optional[dt.Index] = None
         self.current_index: Optional[int] = None
+        # Track live and peak margin usage for reporting.
+        self.margin_used: float = 0.0
+        self.peak_margin_used: float = 0.0
 
     def _log(self, msg: str) -> None:
         # Print debug messages only when the user enables --debug.
@@ -114,13 +119,15 @@ class Simulator:
             side=side,
             quantity=quantity,
             price=price,
-            executed_price=fill_price,
+            executed_price=None,
             timestamp=self.time_index[dt_index],
-            filled_time=self.time_index[dt_index],
-            status="FILLED",
+            status="PENDING",
         )
         self.order_id_counter += 1
         self.orders.append(order)
+        order.executed_price = fill_price
+        order.filled_time = self.time_index[dt_index]
+        order.status = "FILLED"
         pos = self.positions.get(token)
         if pos is None:
             # No existing position?  Create a new one with the trade details.
@@ -133,6 +140,7 @@ class Simulator:
                 entry_price=fill_price,
                 entry_time=self.time_index[dt_index],
             )
+            self._apply_margin(self.positions[token], fill_price)
         else:
             if pos.side == "LONG":
                 if side == "BUY":
@@ -141,12 +149,14 @@ class Simulator:
                     total_qty = pos.quantity + quantity
                     pos.entry_price = (pos.entry_price * pos.quantity + fill_price * quantity) / total_qty
                     pos.quantity = total_qty
+                    self._apply_margin(pos, pos.entry_price)
                 else:
                     # Selling against a long reduces the position size.  If the
                     # size hits zero we record the trade in the log.
                     pos.quantity -= quantity
                     pnl = (fill_price - pos.entry_price) * quantity
                     pos.realised_pnl += pnl
+                    self._apply_margin(pos, pos.entry_price)
                     if pos.quantity == 0:
                         pos.exit_price = fill_price
                         pos.exit_time = self.time_index[dt_index]
@@ -158,11 +168,13 @@ class Simulator:
                     total_qty = pos.quantity + quantity
                     pos.entry_price = (pos.entry_price * pos.quantity + fill_price * quantity) / total_qty
                     pos.quantity = total_qty
+                    self._apply_margin(pos, pos.entry_price)
                 else:
                     # Buying back against a short position.
                     pos.quantity -= quantity
                     pnl = (pos.entry_price - fill_price) * quantity
                     pos.realised_pnl += pnl
+                    self._apply_margin(pos, pos.entry_price)
                     if pos.quantity == 0:
                         pos.exit_price = fill_price
                         pos.exit_time = self.time_index[dt_index]
@@ -224,3 +236,23 @@ class Simulator:
         loss = self.starting_cash - equity
         # True means the loss threshold has been breached and trading should stop.
         return loss >= self.max_daily_loss
+
+    def current_margin(self) -> float:
+        """Return the current margin blocked by open positions."""
+        return max(self.margin_used, 0.0)
+
+    def peak_margin(self) -> float:
+        """Return the highest intraday margin usage for reporting."""
+        return max(self.peak_margin_used, 0.0)
+
+    def _estimate_margin(self, price: float, quantity: int) -> float:
+        """Simple notional-based margin approximation."""
+        return abs(price) * quantity * self.margin_rate
+
+    def _apply_margin(self, pos: Position, ref_price: float) -> None:
+        """Recalculate margin for a position and update simulator totals."""
+        previous = pos.margin_required
+        pos.margin_required = self._estimate_margin(ref_price, pos.quantity)
+        self.margin_used += pos.margin_required - previous
+        self.margin_used = max(self.margin_used, 0.0)
+        self.peak_margin_used = max(self.peak_margin_used, self.margin_used)
