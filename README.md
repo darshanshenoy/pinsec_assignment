@@ -21,7 +21,7 @@ source venv/bin/activate
 If you do not have a requirements file, install the basics manually:
 
 ```bash
-pip install pandas numpy
+pip install -r requirements.txt
 ```
 
 ## Running a Backtest
