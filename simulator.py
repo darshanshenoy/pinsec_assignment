@@ -1,12 +1,12 @@
 """
-assignment.simulator
+simulator
 ====================
 
 This module implements a simple event-driven trading simulator.  It
 mimics key behaviours of a broker/exchange API: retrieving market data,
 placing orders, tracking positions and calculating PnL.  The simulator
-uses data loaded by :class:`assignment.data_loader.MarketDataLoader` and
-models defined in :mod:`assignment.models`.
+uses data loaded by :class:'data_loader.MarketDataLoader' and
+models defined in :mod:'models'.
 """
 
 from __future__ import annotations

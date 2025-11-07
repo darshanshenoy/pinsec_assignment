@@ -1,5 +1,5 @@
 """
-assignment.indicators
+indicators
 =====================
 
 This module defines a collection of static helper functions for computing
@@ -9,10 +9,10 @@ and makes unit testing straightforward.
 
 Indicators provided:
 
-* :func:`ema`-  Exponential moving average.
-* :func:`rsi`-  Relative Strength Index (RSI).
-* :func:`bollinger_bands`-  Bollinger Bands (20 period by default).
-* :func:`nearest_strike`-  Round a price to the nearest strike step.
+* :func:'ema'-  Exponential moving average.
+* :func:'rsi'-  Relative Strength Index (RSI).
+* :func:'bollinger_bands'-  Bollinger Bands (20 period by default).
+* :func:'nearest_strike'-  Round a price to the nearest strike step.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def ema(series: pd.Series, period: int) -> pd.Series:
 
     The EMA applies weighting factors that decrease exponentially with
     time.  It reacts more quickly to recent price changes than a simple
-    moving average【564466252278710†L390-L394】.
+    moving average.
 
     Parameters
     ----------
@@ -52,7 +52,7 @@ def rsi(series: pd.Series, period: int = 14) -> pd.Series:
     """Compute the Relative Strength Index (RSI).
 
     The RSI is a momentum oscillator measured on a scale of 0-100.  A
-    14-period lookback with thresholds at 70 and 30 is common【329361323002609†L168-L171】.
+    14-period lookback with thresholds at 70 and 30 is common.
 
     Parameters
     ----------
@@ -64,7 +64,7 @@ def rsi(series: pd.Series, period: int = 14) -> pd.Series:
     Returns
     -------
     pandas.Series
-        RSI values corresponding to ``series``.
+        RSI values corresponding to 'series'.
     """
     delta = series.diff()
     # Positive price moves (gains). Negative values become zero.
@@ -86,8 +86,8 @@ def bollinger_bands(
     """Calculate Bollinger Bands for a price series.
 
     Bollinger Bands consist of a moving average and bands offset by a
-    multiple of the standard deviation【9116162329173†L159-L169】.  Typical values are a
-    20‑period window and 2 standard deviations.
+    multiple of the standard deviation.  Typical values are a
+    20-period window and 2 standard deviations.
 
     Parameters
     ----------
@@ -116,7 +116,7 @@ def nearest_strike(price: float, step: int = 50) -> int:
     """Round a price to the nearest strike increment.
 
     Indian index options typically trade in 50-point increments.  This helper
-    rounds an arbitrary price to the nearest multiple of ``step``.
+    rounds an arbitrary price to the nearest multiple of step.
 
     Parameters
     ----------

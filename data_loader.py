@@ -1,8 +1,8 @@
 """
-assignment.data_loader
+data_loader
 ======================
 
-This module contains the :class:`MarketDataLoader` responsible for reading
+This module contains the :class:'MarketDataLoader' responsible for reading
 contract metadata and minute level OHLC data from disk.  Separating data
 loading into its own module keeps the simulator independent from
 file format details and eases testing.

@@ -1,5 +1,5 @@
 """
-assignment.models
+models
 =================
 
 This module defines simple data containers for orders, positions and trade

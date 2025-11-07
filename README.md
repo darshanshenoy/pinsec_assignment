@@ -1,7 +1,3 @@
-# Backtest Infra
-
-Beginner-friendly summary of the assignment codebase, how the parts fit together,
-and what happens when you run a backtest.
 
 ## Project Structure
 
@@ -20,7 +16,6 @@ Create or activate the provided virtual environment and install requirements (pa
 
 ```bash
 source venv/bin/activate
-pip install -r requirements.txt  # only if the interviewer supplied one
 ```
 
 If you do not have a requirements file, install the basics manually:
@@ -106,5 +101,3 @@ python -m backtest \
 - **KeyError: token not found** – The instrument exists in `Contract_File.csv` but is missing from the pickle. Double-check that the chosen underlying token has market data (`token in loader.data_by_token`).
 - **ModuleNotFoundError** – Ensure you are running inside the virtual environment or that dependencies (pandas, numpy) are installed.
 - **No trades printed** – Enable `--debug` to see if the strategy skipped entry due to missing indicators or price NaNs.
-
-Once you are familiar with the flow above, feel free to experiment by tweaking strategy parameters or adding new ones. The inline comments throughout the code explain each step so you can safely extend the project. 
